@@ -1,269 +1,286 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexiva Web</title>
-    <!-- Подключаем библиотеку Socket.IO для браузера -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <style>
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; height: 100vh; background-color: #f0f2f5; }
-        
-        /* Экран входа */
-        #login-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .login-box { background: white; padding: 30px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 300px; }
-        .login-box input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-        .login-box button { width: 100%; padding: 12px; background: #007aff; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        
-        /* Главный интерфейс */
-        #app { display: none; width: 100%; height: 100%; }
-        
-        /* Левая панель (Пользователи) */
-        .sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 20px; background: #f8f9fa; border-bottom: 1px solid #ddd; font-weight: bold; font-size: 18px;}
-        .user-list { flex: 1; overflow-y: auto; list-style: none; padding: 0; margin: 0; }
-        .user-item { padding: 15px 20px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; }
-        .user-item:hover { background: #f0f0f0; }
-        .user-item.active { background: #e6f2ff; }
-        .online-dot { width: 10px; height: 10px; background: #34c759; border-radius: 50%; margin-right: 10px; }
-        
-        /* Правая панель (Чат) */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: #e5e5ea; }
-        .chat-header { padding: 20px; background: white; border-bottom: 1px solid #ddd; font-weight: bold; font-size: 18px; display: flex; justify-content: space-between;}
-        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        
-        /* Пузыри сообщений */
-        .msg { max-width: 60%; padding: 10px 15px; border-radius: 18px; font-size: 15px; line-height: 1.4; position: relative; }
-        .msg-mine { background: #007aff; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .msg-other { background: white; color: black; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .msg-time { font-size: 10px; opacity: 0.7; margin-top: 4px; text-align: right; }
-        
-        /* Ввод сообщения */
-        .input-area { padding: 15px 20px; background: white; display: flex; gap: 10px; border-top: 1px solid #ddd;}
-        .input-area input { flex: 1; padding: 12px 15px; border: 1px solid #ccc; border-radius: 20px; font-size: 15px; outline: none; }
-        .input-area button { padding: 0 20px; background: #007aff; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold;}
-        .input-area button:disabled { background: #ccc; cursor: not-allowed; }
-        
-        #empty-state { flex: 1; display: flex; justify-content: center; align-items: center; color: #888; font-size: 18px; }
-    </style>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2575.7">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; -webkit-text-stroke: #000000}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; -webkit-text-stroke: #000000; min-height: 14.0px}
+    span.s1 {font-kerning: none}
+  </style>
 </head>
 <body>
-
-    <!-- Экран входа -->
-    <div id="login-screen">
-        <div class="login-box">
-            <h2>Вход в Nexiva Web</h2>
-            <input type="text" id="input-name" placeholder="Ваше Имя (например, Web User)">
-            <input type="text" id="input-username" placeholder="Ваш @username (например, @web1)">
-            <button onclick="login()">Войти в сеть</button>
-        </div>
-    </div>
-
-    <!-- Главный интерфейс -->
-    <div id="app">
-        <!-- Список онлайна -->
-        <div class="sidebar">
-            <div class="sidebar-header">Люди в сети</div>
-            <ul class="user-list" id="users-list">
-                <!-- Сюда JS добавит пользователей -->
-            </ul>
-        </div>
-
-        <!-- Зона переписки -->
-        <div class="chat-area" id="chat-area" style="display: none;">
-            <div class="chat-header">
-                <span id="chat-title">Чат</span>
-                <span style="color: #888; font-size: 14px;">Nexiva</span>
-            </div>
-            <div class="messages" id="messages-container">
-                <!-- Сюда JS добавит сообщения -->
-            </div>
-            <div class="input-area">
-                <input type="text" id="msg-input" placeholder="Написать сообщение..." onkeypress="handleEnter(event)">
-                <button id="send-btn" onclick="sendMessage()">Отправить</button>
-            </div>
-        </div>
-        
-        <!-- Заглушка, когда не выбран чат -->
-        <div id="empty-state">
-            Выберите пользователя слева, чтобы начать чат
-        </div>
-    </div>
-
-    <script>
-        // 1. ПОДКЛЮЧАЕМСЯ К ТВОЕМУ СЕРВЕРУ
-        const socket = io('http://192.168.1.102:3000');
-        
-        let myName = "";
-        let myUsername = "";
-        let currentChatUser = null; // С кем сейчас открыт чат
-        let currentRoomId = "";     // ID комнаты
-        let allMessages = [];       // Все сообщения с сервера
-
-        // Логика входа
-        function login() {
-            const nameInput = document.getElementById('input-name').value.trim();
-            const usernameInput = document.getElementById('input-username').value.trim();
-            
-            if (!nameInput || !usernameInput) {
-                alert("Заполните оба поля!");
-                return;
-            }
-            
-            myName = nameInput;
-            myUsername = usernameInput.startsWith('@') ? usernameInput : '@' + usernameInput;
-            
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app').style.display = 'flex';
-            
-            // Сообщаем серверу, что веб-клиент вошел в сеть!
-            socket.emit('user_joined', { name: myName, username: myUsername });
-        }
-
-        // 2. СЛУШАЕМ СЕРВЕР
-
-        // Сервер прислал список людей в сети
-        socket.on('online_users', (users) => {
-            const list = document.getElementById('users-list');
-            list.innerHTML = ''; // Очищаем список
-            
-            users.forEach(user => {
-                // Себя не показываем
-                if (user.username === myUsername) return;
-                
-                const li = document.createElement('li');
-                li.className = 'user-item';
-                // Если этот юзер сейчас открыт, подсвечиваем его
-                if (currentChatUser && currentChatUser.username === user.username) {
-                    li.classList.add('active');
-                }
-                
-                li.innerHTML = `
-                    <div class="online-dot"></div>
-                    <div>
-                        <div style="font-weight: bold;">${user.name}</div>
-                        <div style="font-size: 12px; color: #888;">${user.username}</div>
-                    </div>
-                `;
-                
-                // При клике на юзера - открываем с ним чат
-                li.onclick = () => openChat(user);
-                list.appendChild(li);
-            });
-        });
-
-        // Сервер прислал историю
-        socket.on('load_history', (history) => {
-            allMessages = history;
-            if (currentChatUser) renderMessages();
-        });
-
-        // Сервер прислал новое сообщение (от кого угодно)
-        socket.on('receive_message', (msg) => {
-            // Игнорируем системные команды (звонки, заморозки)
-            if (msg.text.startsWith('SYS_')) return;
-            
-            // Добавляем в общую базу
-            if (!allMessages.find(m => m.id === msg.id)) {
-                allMessages.push(msg);
-                
-                // Если мы сейчас сидим в этом чате - перерисовываем
-                if (currentChatUser && msg.chatId === currentRoomId) {
-                    renderMessages();
-                    
-                    // Звук уведомления на компе (если страница открыта)
-                    if (msg.senderId !== myUsername) {
-                        new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(()=>{});
-                    }
-                }
-            }
-        });
-
-        // 3. ЛОГИКА ИНТЕРФЕЙСА
-
-        // Функция генерации ID чата (ТАКАЯ ЖЕ КАК В SWIFT!)
-        function generatePrivateChatId(user1, user2) {
-            return [user1, user2].sort().join('_');
-        }
-
-        function openChat(user) {
-            currentChatUser = user;
-            currentRoomId = generatePrivateChatId(myUsername, user.username);
-            
-            document.getElementById('empty-state').style.display = 'none';
-            document.getElementById('chat-area').style.display = 'flex';
-            document.getElementById('chat-title').innerText = user.name;
-            
-            // Подсвечиваем в списке
-            document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            
-            renderMessages();
-        }
-
-        function renderMessages() {
-            const container = document.getElementById('messages-container');
-            container.innerHTML = '';
-            
-            // Фильтруем сообщения только для текущей комнаты
-            const chatMsgs = allMessages.filter(m => m.chatId === currentRoomId && !m.text.startsWith('SYS_'));
-            
-            chatMsgs.forEach(msg => {
-                const isMine = msg.senderId === myUsername;
-                const div = document.createElement('div');
-                div.className = `msg ${isMine ? 'msg-mine' : 'msg-other'}`;
-                
-                const date = new Date(msg.timestamp);
-                const time = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-                
-                div.innerHTML = `
-                    <div>${msg.text} ${msg.effect ? msg.effect : ''}</div>
-                    <div class="msg-time">${time}</div>
-                `;
-                container.appendChild(div);
-            });
-            
-            // Прокрутка вниз
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // 4. ОТПРАВКА СООБЩЕНИЯ
-        function sendMessage() {
-            const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            
-            if (!text || !currentChatUser) return;
-            
-            const newId = crypto.randomUUID();
-            const timestamp = new Date().toISOString();
-            
-            const data = {
-                id: newId,
-                chatId: currentRoomId,
-                text: text,
-                senderId: myUsername,
-                effect: "",
-                customColor: "",
-                isSilent: false,
-                timestamp: timestamp
-            };
-            
-            // Отправляем на сервер Node.js
-            socket.emit('send_message', data);
-            
-            // Рисуем у себя (оптимистичный UI)
-            const myMsg = { ...data, isMine: true };
-            allMessages.push(myMsg);
-            renderMessages();
-            
-            input.value = '';
-            input.focus();
-        }
-
-        function handleEnter(e) {
-            if (e.key === 'Enter') sendMessage();
-        }
-    </script>
+<p class="p1"><span class="s1">&lt;!DOCTYPE html&gt;</span></p>
+<p class="p1"><span class="s1">&lt;html lang="ru"&gt;</span></p>
+<p class="p1"><span class="s1">&lt;head&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;title&gt;Nexiva Web&lt;/title&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;!-- Подключаем библиотеку Socket.IO для браузера --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdn.socket.io/4.7.2/socket.io.min.js"&gt;&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;style&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; height: 100vh; background-color: #f0f2f5; }</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/* Экран входа */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>#login-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.login-box { background: white; padding: 30px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 300px; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.login-box input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.login-box button { width: 100%; padding: 12px; background: #007aff; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; }</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/* Главный интерфейс */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>#app { display: none; width: 100%; height: 100%; }</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/* Левая панель (Пользователи) */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.sidebar-header { padding: 20px; background: #f8f9fa; border-bottom: 1px solid #ddd; font-weight: bold; font-size: 18px;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.user-list { flex: 1; overflow-y: auto; list-style: none; padding: 0; margin: 0; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.user-item { padding: 15px 20px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.user-item:hover { background: #f0f0f0; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.user-item.active { background: #e6f2ff; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.online-dot { width: 10px; height: 10px; background: #34c759; border-radius: 50%; margin-right: 10px; }</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/* Правая панель (Чат) */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.chat-area { flex: 1; display: flex; flex-direction: column; background: #e5e5ea; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.chat-header { padding: 20px; background: white; border-bottom: 1px solid #ddd; font-weight: bold; font-size: 18px; display: flex; justify-content: space-between;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/* Пузыри сообщений */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.msg { max-width: 60%; padding: 10px 15px; border-radius: 18px; font-size: 15px; line-height: 1.4; position: relative; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.msg-mine { background: #007aff; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.msg-other { background: white; color: black; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.msg-time { font-size: 10px; opacity: 0.7; margin-top: 4px; text-align: right; }</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/* Ввод сообщения */</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.input-area { padding: 15px 20px; background: white; display: flex; gap: 10px; border-top: 1px solid #ddd;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.input-area input { flex: 1; padding: 12px 15px; border: 1px solid #ccc; border-radius: 20px; font-size: 15px; outline: none; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.input-area button { padding: 0 20px; background: #007aff; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.input-area button:disabled { background: #ccc; cursor: not-allowed; }</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>#empty-state { flex: 1; display: flex; justify-content: center; align-items: center; color: #888; font-size: 18px; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/head&gt;</span></p>
+<p class="p1"><span class="s1">&lt;body&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;!-- Экран входа --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div id="login-screen"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="login-box"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;h2&gt;Вход в Nexiva Web&lt;/h2&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;input type="text" id="input-name" placeholder="Ваше Имя (например, Web User)"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;input type="text" id="input-username" placeholder="Ваш @username (например, @web1)"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;button onclick="login()"&gt;Войти в сеть&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;!-- Главный интерфейс --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div id="app"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;!-- Список онлайна --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="sidebar"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div class="sidebar-header"&gt;Люди в сети&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;ul class="user-list" id="users-list"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;!-- Сюда JS добавит пользователей --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/ul&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;!-- Зона переписки --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div class="chat-area" id="chat-area" style="display: none;"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div class="chat-header"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;span id="chat-title"&gt;Чат&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;span style="color: #888; font-size: 14px;"&gt;Nexiva&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div class="messages" id="messages-container"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;!-- Сюда JS добавит сообщения --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div class="input-area"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;input type="text" id="msg-input" placeholder="Написать сообщение..." onkeypress="handleEnter(event)"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;button id="send-btn" onclick="sendMessage()"&gt;Отправить&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;!-- Заглушка, когда не выбран чат --&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div id="empty-state"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>Выберите пользователя слева, чтобы начать чат</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;script&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// 1. ПОДКЛЮЧАЕМСЯ К ТВОЕМУ СЕРВЕРУ</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const socket = io('http://192.168.1.102:3000');</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>let myName = "";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>let myUsername = "";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>let currentChatUser = null; // С кем сейчас открыт чат</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>let currentRoomId = ""; <span class="Apple-converted-space">    </span>// ID комнаты</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>let allMessages = []; <span class="Apple-converted-space">      </span>// Все сообщения с сервера</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// Логика входа</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>function login() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const nameInput = document.getElementById('input-name').value.trim();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const usernameInput = document.getElementById('input-username').value.trim();</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>if (!nameInput || !usernameInput) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>alert("Заполните оба поля!");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>myName = nameInput;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>myUsername = usernameInput.startsWith('@') ? usernameInput : '@' + usernameInput;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>document.getElementById('login-screen').style.display = 'none';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>document.getElementById('app').style.display = 'flex';</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>// Сообщаем серверу, что веб-клиент вошел в сеть!</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>socket.emit('user_joined', { name: myName, username: myUsername });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// 2. СЛУШАЕМ СЕРВЕР</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// Сервер прислал список людей в сети</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>socket.on('online_users', (users) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const list = document.getElementById('users-list');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>list.innerHTML = ''; // Очищаем список</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>users.forEach(user =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>// Себя не показываем</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>if (user.username === myUsername) return;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">                </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>const li = document.createElement('li');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>li.className = 'user-item';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>// Если этот юзер сейчас открыт, подсвечиваем его</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>if (currentChatUser &amp;&amp; currentChatUser.username === user.username) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>li.classList.add('active');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>}</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">                </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>li.innerHTML = `</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div class="online-dot"&gt;&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;div style="font-weight: bold;"&gt;${user.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;div style="font-size: 12px; color: #888;"&gt;${user.username}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>`;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">                </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>// При клике на юзера - открываем с ним чат</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>li.onclick = () =&gt; openChat(user);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>list.appendChild(li);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// Сервер прислал историю</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>socket.on('load_history', (history) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>allMessages = history;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>if (currentChatUser) renderMessages();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// Сервер прислал новое сообщение (от кого угодно)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>socket.on('receive_message', (msg) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>// Игнорируем системные команды (звонки, заморозки)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>if (msg.text.startsWith('SYS_')) return;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>// Добавляем в общую базу</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>if (!allMessages.find(m =&gt; m.id === msg.id)) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>allMessages.push(msg);</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">                </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>// Если мы сейчас сидим в этом чате - перерисовываем</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>if (currentChatUser &amp;&amp; msg.chatId === currentRoomId) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>renderMessages();</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">                    </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>// Звук уведомления на компе (если страница открыта)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>if (msg.senderId !== myUsername) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                        </span>new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(()=&gt;{});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// 3. ЛОГИКА ИНТЕРФЕЙСА</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// Функция генерации ID чата (ТАКАЯ ЖЕ КАК В SWIFT!)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>function generatePrivateChatId(user1, user2) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>return [user1, user2].sort().join('_');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>function openChat(user) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>currentChatUser = user;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>currentRoomId = generatePrivateChatId(myUsername, user.username);</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>document.getElementById('empty-state').style.display = 'none';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>document.getElementById('chat-area').style.display = 'flex';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>document.getElementById('chat-title').innerText = user.name;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>// Подсвечиваем в списке</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>document.querySelectorAll('.user-item').forEach(el =&gt; el.classList.remove('active'));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>event.currentTarget.classList.add('active');</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>renderMessages();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>function renderMessages() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const container = document.getElementById('messages-container');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>container.innerHTML = '';</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>// Фильтруем сообщения только для текущей комнаты</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const chatMsgs = allMessages.filter(m =&gt; m.chatId === currentRoomId &amp;&amp; !m.text.startsWith('SYS_'));</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>chatMsgs.forEach(msg =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>const isMine = msg.senderId === myUsername;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>const div = document.createElement('div');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>div.className = `msg ${isMine ? 'msg-mine' : 'msg-other'}`;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">                </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>const date = new Date(msg.timestamp);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>const time = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">                </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>div.innerHTML = `</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div&gt;${msg.text} ${msg.effect ? msg.effect : ''}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div class="msg-time"&gt;${time}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>container.appendChild(div);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>});</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>// Прокрутка вниз</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>container.scrollTop = container.scrollHeight;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>// 4. ОТПРАВКА СООБЩЕНИЯ</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>function sendMessage() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const input = document.getElementById('msg-input');</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const text = input.value.trim();</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>if (!text || !currentChatUser) return;</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const newId = crypto.randomUUID();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const timestamp = new Date().toISOString();</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const data = {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>id: newId,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>chatId: currentRoomId,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>text: text,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>senderId: myUsername,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>effect: "",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>customColor: "",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>isSilent: false,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>timestamp: timestamp</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>};</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>// Отправляем на сервер Node.js</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>socket.emit('send_message', data);</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>// Рисуем у себя (оптимистичный UI)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>const myMsg = { ...data, isMine: true };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>allMessages.push(myMsg);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>renderMessages();</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>input.value = '';</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>input.focus();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>function handleEnter(e) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>if (e.key === 'Enter') sendMessage();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/body&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/html&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
 </body>
 </html>
-
